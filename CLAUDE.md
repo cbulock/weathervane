@@ -56,6 +56,10 @@ curl http://localhost:8080/health
 vlc http://localhost:8080/hls/stream.m3u8
 ```
 
+### CI
+
+GitHub Actions builds the Docker image from the repository root `Dockerfile` on every `push` and `pull_request` using `.github/workflows/docker-build.yml`.
+
 ### Environment Variables
 See `.env.example` for all configurable options. Key ones:
 - `LOCATION` - City name (e.g. "New York")
