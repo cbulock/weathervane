@@ -84,3 +84,10 @@ Key environment variables:
 ## CI
 
 GitHub Actions builds the Docker image on every push and pull request using `.github/workflows/docker-build.yml`.
+
+Pushes to `main` also publish the container image to GitHub Container Registry as:
+
+```text
+ghcr.io/cbulock/weathervane:latest
+ghcr.io/cbulock/weathervane:sha-<commit>
+```
