@@ -1,0 +1,85 @@
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    xvfb \
+    pulseaudio \
+    ffmpeg \
+    nginx-light \
+    chromium \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    fonts-dejavu-core \
+    dbus-x11 \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libasound2-plugins \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libxext6 \
+    libxtst6 \
+    libxi6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxshmfence1 \
+    libglu1-mesa \
+    procps \
+    tini \
+    x11vnc \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+RUN mkdir -p /app
+
+# Install automation dependencies and download a real browser binary for the container.
+COPY automation/package*.json /app/automation/
+RUN cd /app/automation \
+    && npm install --production
+
+# Copy application files
+COPY scripts/ /app/scripts/
+COPY config/ /app/config/
+COPY automation/setup-weather.js /app/automation/
+COPY config/asound.conf /etc/asound.conf
+
+# Normalize script line endings for Linux containers and make scripts executable.
+RUN sed -i 's/\r$//' /app/scripts/*.sh \
+    && chmod +x /app/scripts/*.sh
+
+# Ensure directories exist
+RUN mkdir -p /tmp/hls /tmp/chromium-profile
+
+# Set environment defaults
+ENV SCREEN_WIDTH=960 \
+    SCREEN_HEIGHT=720 \
+    FRAMERATE=30 \
+    VIDEO_BITRATE=2500k \
+    AUDIO_BITRATE=128k \
+    FFMPEG_PRESET=veryfast \
+    HLS_SEGMENT_DURATION=4 \
+    HLS_LIST_SIZE=5 \
+    HLS_PORT=8080 \
+    TZ=America/New_York \
+    ENABLE_VNC=false \
+    DISPLAY=:99
+
+EXPOSE 8080 5900
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
+    CMD bash /app/scripts/healthcheck.sh
+
+ENTRYPOINT ["tini", "--"]
+CMD ["bash", "/app/scripts/entrypoint.sh"]

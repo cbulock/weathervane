@@ -1,0 +1,7 @@
+{
+  "name": "weathervane-automation",
+  "private": true,
+  "dependencies": {
+    "puppeteer-core": "^22.15.0"
+  }
+}

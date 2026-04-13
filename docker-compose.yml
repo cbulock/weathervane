@@ -1,0 +1,34 @@
+services:
+  weathervane:
+    build: .
+    container_name: weathervane
+    restart: unless-stopped
+    ports:
+      - "${HLS_PORT:-8080}:8080"
+      # Uncomment for VNC debugging:
+      # - "5900:5900"
+    environment:
+      - LOCATION=${LOCATION:-}
+      - SCREEN_WIDTH=${SCREEN_WIDTH:-960}
+      - SCREEN_HEIGHT=${SCREEN_HEIGHT:-720}
+      - FRAMERATE=${FRAMERATE:-30}
+      - CAPTURE_WIDTH=${CAPTURE_WIDTH:-930}
+      - CAPTURE_HEIGHT=${CAPTURE_HEIGHT:-600}
+      - CAPTURE_OFFSET_X=${CAPTURE_OFFSET_X:-15}
+      - CAPTURE_OFFSET_Y=${CAPTURE_OFFSET_Y:-0}
+      - VIDEO_BITRATE=${VIDEO_BITRATE:-2500k}
+      - AUDIO_BITRATE=${AUDIO_BITRATE:-128k}
+      - FFMPEG_PRESET=${FFMPEG_PRESET:-veryfast}
+      - HLS_SEGMENT_DURATION=${HLS_SEGMENT_DURATION:-4}
+      - HLS_LIST_SIZE=${HLS_LIST_SIZE:-5}
+      - HLS_PORT=${HLS_PORT:-8080}
+      - TZ=${TZ:-America/New_York}
+      - ENABLE_VNC=${ENABLE_VNC:-false}
+    shm_size: '2gb'
+    tmpfs:
+      - /tmp/hls:size=100M
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
