@@ -48,8 +48,9 @@ bash /app/scripts/start-pulseaudio.sh
 
 # Step 3: Start nginx for HLS serving
 mkdir -p /tmp/hls
-if ! bash /app/scripts/generate-epg.sh /tmp/hls/epg.xml; then
-  echo "Failed to generate EPG file at /tmp/hls/epg.xml" >&2
+EPG_PATH=/tmp/hls/epg.xml
+if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
+  echo "Failed to generate EPG file at ${EPG_PATH}" >&2
   exit 1
 fi
 nginx -c /app/config/nginx.conf &
