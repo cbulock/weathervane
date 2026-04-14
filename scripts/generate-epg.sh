@@ -7,6 +7,7 @@ CHANNEL_NAME=${EPG_CHANNEL_NAME:-WeatherVane RetroCast}
 PROGRAM_TITLE=${EPG_PROGRAM_TITLE:-RetroCast Weather Loop}
 PROGRAM_DESCRIPTION=${EPG_PROGRAM_DESCRIPTION:-Continuous Weather Channel RetroCast stream.}
 
+# Uses GNU date syntax; WeatherVane runs on Debian bookworm-slim.
 START_TIME=$(date -d '-1 day' '+%Y%m%d%H%M%S %z')
 STOP_TIME=$(date -d '+3650 days' '+%Y%m%d%H%M%S %z')
 TMP_PATH="${OUTPUT_PATH}.tmp"
