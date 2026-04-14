@@ -18,6 +18,12 @@ The resulting stream is served at:
 http://localhost:8080/hls/stream.m3u8
 ```
 
+EPG data is served at:
+
+```text
+http://localhost:8080/epg.xml
+```
+
 ## Quick start
 
 1. Copy `.env.example` to `.env` if you want to override defaults.
