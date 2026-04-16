@@ -18,6 +18,12 @@ The resulting stream is served at:
 http://localhost:8080/hls/stream.m3u8
 ```
 
+EPG data is served at:
+
+```text
+http://localhost:8080/epg.xml
+```
+
 ## Quick start
 
 1. Copy `.env.example` to `.env` if you want to override defaults.
@@ -61,6 +67,10 @@ Key environment variables:
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
+| `EPG_CHANNEL_ID` | `weathervane.retro` | XMLTV channel id used in `/epg.xml` |
+| `EPG_CHANNEL_NAME` | `WeatherVane RetroCast` | XMLTV channel display name |
+| `EPG_PROGRAM_TITLE` | `RetroCast Weather Loop` | XMLTV programme title |
+| `EPG_PROGRAM_DESCRIPTION` | `Continuous Weather Channel RetroCast stream.` | XMLTV programme description |
 | `ENABLE_VNC` | `false` | Expose VNC for visual debugging |
 
 ## Important files

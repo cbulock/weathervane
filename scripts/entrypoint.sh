@@ -5,6 +5,7 @@ echo "=== WeatherVane IPTV Stream ==="
 echo "Location: ${LOCATION:-auto}"
 echo "Resolution: ${SCREEN_WIDTH:-960}x${SCREEN_HEIGHT:-720}"
 echo "Stream will be available at http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
+echo "EPG will be available at http://localhost:${HLS_PORT:-8080}/epg.xml"
 echo "==========================="
 
 export DISPLAY=:99
@@ -47,6 +48,11 @@ bash /app/scripts/start-pulseaudio.sh
 
 # Step 3: Start nginx for HLS serving
 mkdir -p /tmp/hls
+EPG_PATH=/tmp/hls/epg.xml
+if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
+  echo "Failed to generate EPG file at ${EPG_PATH}" >&2
+  exit 1
+fi
 nginx -c /app/config/nginx.conf &
 echo $! > /tmp/nginx.pid
 echo "nginx started"
@@ -80,6 +86,7 @@ echo $FFMPEG_PID > /tmp/ffmpeg.pid
 echo "==========================="
 echo "WeatherVane is live!"
 echo "Stream: http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
+echo "EPG: http://localhost:${HLS_PORT:-8080}/epg.xml"
 echo "==========================="
 
 wait $FFMPEG_PID
