@@ -69,6 +69,7 @@ Key environment variables:
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
 | `EPG_CHANNEL_ID` | `weathervane.retro` | XMLTV channel id used in `/epg.xml` |
 | `EPG_CHANNEL_NAME` | `WeatherVane RetroCast` | XMLTV channel display name |
+| `EPG_CHANNEL_ICON` | `https://weather.com/retro/assets/icon.png` | XMLTV channel icon URL used in `/epg.xml` |
 | `EPG_PROGRAM_TITLE` | `RetroCast Weather Loop` | XMLTV programme title |
 | `EPG_PROGRAM_DESCRIPTION` | `Continuous Weather Channel RetroCast stream.` | XMLTV programme description |
 | `ENABLE_VNC` | `false` | Expose VNC for visual debugging |

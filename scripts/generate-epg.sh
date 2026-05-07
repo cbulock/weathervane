@@ -4,6 +4,7 @@ set -euo pipefail
 OUTPUT_PATH=${1:-/tmp/hls/epg.xml}
 CHANNEL_ID=${EPG_CHANNEL_ID:-weathervane.retro}
 CHANNEL_NAME=${EPG_CHANNEL_NAME:-WeatherVane RetroCast}
+CHANNEL_ICON=${EPG_CHANNEL_ICON:-https://weather.com/retro/assets/icon.png}
 PROGRAM_TITLE=${EPG_PROGRAM_TITLE:-RetroCast Weather Loop}
 PROGRAM_DESCRIPTION=${EPG_PROGRAM_DESCRIPTION:-Continuous Weather Channel RetroCast stream.}
 
@@ -29,6 +30,7 @@ TMP_PATH="${OUTPUT_PATH}.tmp"
 
 CHANNEL_ID_XML_ATTR=$(xml_escape_attr "$CHANNEL_ID")
 CHANNEL_NAME_XML_TEXT=$(xml_escape_text "$CHANNEL_NAME")
+CHANNEL_ICON_XML_ATTR=$(xml_escape_attr "$CHANNEL_ICON")
 PROGRAM_TITLE_XML_TEXT=$(xml_escape_text "$PROGRAM_TITLE")
 PROGRAM_DESCRIPTION_XML_TEXT=$(xml_escape_text "$PROGRAM_DESCRIPTION")
 
@@ -37,6 +39,7 @@ cat > "$TMP_PATH" <<EOF
 <tv generator-info-name="WeatherVane" source-info-name="weather.com/retro">
   <channel id="${CHANNEL_ID_XML_ATTR}">
     <display-name>${CHANNEL_NAME_XML_TEXT}</display-name>
+    <icon src="${CHANNEL_ICON_XML_ATTR}" />
   </channel>
   <programme start="${START_TIME}" stop="${STOP_TIME}" channel="${CHANNEL_ID_XML_ATTR}">
     <title lang="en">${PROGRAM_TITLE_XML_TEXT}</title>
