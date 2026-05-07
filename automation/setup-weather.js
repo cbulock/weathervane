@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const puppeteer = require('puppeteer-core');
 
 const LOCATION = process.env.LOCATION || '';
@@ -8,6 +10,8 @@ const SCREEN_WIDTH = Number.parseInt(process.env.SCREEN_WIDTH || '960', 10);
 const SCREEN_HEIGHT = Number.parseInt(process.env.SCREEN_HEIGHT || '720', 10);
 const WATCH_MODE = process.argv.includes('--watch');
 const WATCH_INTERVAL_MS = Number.parseInt(process.env.START_BUTTON_WATCH_INTERVAL_MS || '5000', 10);
+const FRAMING_DEBUG = process.env.FRAMING_DEBUG === 'true';
+const FRAMING_DEBUG_DIR = process.env.FRAMING_DEBUG_DIR || '/tmp/hls/debug';
 
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -143,6 +147,81 @@ async function hideCursor(page) {
   });
 }
 
+async function collectFramingMetrics(page) {
+  return page.evaluate(() => {
+    const summarize = (selector, limit = 10) =>
+      Array.from(document.querySelectorAll(selector)).slice(0, limit).map(el => {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return {
+          tag: el.tagName,
+          id: el.id || '',
+          className: typeof el.className === 'string' ? el.className : '',
+          text: (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+          rect: {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            right: rect.right,
+            bottom: rect.bottom,
+          },
+          position: style.position,
+          display: style.display,
+          overflow: style.overflow,
+        };
+      });
+
+    return {
+      capturedAt: new Date().toISOString(),
+      window: {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        outerWidth: window.outerWidth,
+        outerHeight: window.outerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+      },
+      document: {
+        clientWidth: document.documentElement.clientWidth,
+        clientHeight: document.documentElement.clientHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+      },
+      visualViewport: window.visualViewport
+        ? {
+            width: window.visualViewport.width,
+            height: window.visualViewport.height,
+            offsetLeft: window.visualViewport.offsetLeft,
+            offsetTop: window.visualViewport.offsetTop,
+            scale: window.visualViewport.scale,
+          }
+        : null,
+      elements: {
+        main: summarize('main', 2),
+        buttons: summarize('button', 8),
+        videos: summarize('video', 8),
+        canvases: summarize('canvas', 8),
+      },
+    };
+  });
+}
+
+async function writeFramingDebugArtifacts(page, label) {
+  if (!FRAMING_DEBUG) {
+    return;
+  }
+
+  fs.mkdirSync(FRAMING_DEBUG_DIR, { recursive: true });
+
+  const screenshotPath = path.join(FRAMING_DEBUG_DIR, `${label}.png`);
+  const metricsPath = path.join(FRAMING_DEBUG_DIR, `${label}-metrics.json`);
+  const metrics = await collectFramingMetrics(page);
+
+  await page.screenshot({ path: screenshotPath });
+  fs.writeFileSync(metricsPath, `${JSON.stringify(metrics, null, 2)}\n`, 'utf8');
+  console.log(`Wrote framing debug artifacts to ${FRAMING_DEBUG_DIR}`);
+}
+
 async function dismissOverlays(page) {
   // Try to dismiss cookie consent or other overlays
   try {
@@ -246,6 +325,7 @@ async function clickStartIfPresent(page) {
   const countdownCleared = await waitForCountdownToClear(page, 8000);
   await normalizeViewport(page);
   await hideCursor(page);
+  await writeFramingDebugArtifacts(page, 'watch-recovery');
 
   if (countdownCleared) {
     console.log('Start RetroCast click cleared the countdown state.');
@@ -342,6 +422,7 @@ async function main() {
   await unmuteAudio(page);
   await normalizeViewport(page);
   await hideCursor(page);
+  await writeFramingDebugArtifacts(page, 'post-setup');
   await sleep(1000);
 
   console.log('Setup complete. RetroCast is running.');

@@ -65,6 +65,11 @@ RUN mkdir -p /tmp/hls /tmp/chromium-profile
 # Set environment defaults
 ENV SCREEN_WIDTH=960 \
     SCREEN_HEIGHT=720 \
+    CAPTURE_MODE=full \
+    CAPTURE_WIDTH=960 \
+    CAPTURE_HEIGHT=720 \
+    CAPTURE_OFFSET_X=0 \
+    CAPTURE_OFFSET_Y=0 \
     FRAMERATE=30 \
     VIDEO_BITRATE=2500k \
     AUDIO_BITRATE=128k \
@@ -72,6 +77,8 @@ ENV SCREEN_WIDTH=960 \
     HLS_SEGMENT_DURATION=4 \
     HLS_LIST_SIZE=5 \
     HLS_PORT=8080 \
+    FRAMING_DEBUG=false \
+    FRAMING_DEBUG_DIR=/tmp/hls/debug \
     EPG_CHANNEL_ID=weathervane.retro \
     EPG_CHANNEL_NAME=WeatherVane RetroCast \
     EPG_CHANNEL_ICON=https://weather.com/retro/assets/icon.png \

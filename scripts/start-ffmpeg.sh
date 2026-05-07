@@ -3,16 +3,19 @@ set -e
 
 WIDTH=${SCREEN_WIDTH:-960}
 HEIGHT=${SCREEN_HEIGHT:-720}
-CAPTURE_WIDTH=${CAPTURE_WIDTH:-800}
-CAPTURE_HEIGHT=${CAPTURE_HEIGHT:-600}
+CAPTURE_MODE=${CAPTURE_MODE:-full}
+CAPTURE_WIDTH=${CAPTURE_WIDTH:-$WIDTH}
+CAPTURE_HEIGHT=${CAPTURE_HEIGHT:-$HEIGHT}
 CAPTURE_OFFSET_X=${CAPTURE_OFFSET_X:-0}
-CAPTURE_OFFSET_Y=${CAPTURE_OFFSET_Y:-80}
+CAPTURE_OFFSET_Y=${CAPTURE_OFFSET_Y:-0}
 FPS=${FRAMERATE:-30}
 VBITRATE=${VIDEO_BITRATE:-2500k}
 ABITRATE=${AUDIO_BITRATE:-128k}
 PRESET=${FFMPEG_PRESET:-veryfast}
 HLS_TIME=${HLS_SEGMENT_DURATION:-4}
 HLS_SIZE=${HLS_LIST_SIZE:-5}
+FRAMING_DEBUG=${FRAMING_DEBUG:-false}
+FRAMING_DEBUG_DIR=${FRAMING_DEBUG_DIR:-/tmp/hls/debug}
 
 export DISPLAY=:99
 
@@ -33,13 +36,46 @@ fi
 BUFSIZE=$(echo "${VBITRATE}" | sed 's/k//' | awk '{print $1*2"k"}')
 GOP=$((FPS * 2))
 
-echo "Starting FFmpeg capture (${CAPTURE_WIDTH}x${CAPTURE_HEIGHT}+${CAPTURE_OFFSET_X},${CAPTURE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps)..."
+case "${CAPTURE_MODE}" in
+  full)
+    SOURCE_WIDTH=${WIDTH}
+    SOURCE_HEIGHT=${HEIGHT}
+    SOURCE_OFFSET_X=0
+    SOURCE_OFFSET_Y=0
+    ;;
+  crop)
+    SOURCE_WIDTH=${CAPTURE_WIDTH}
+    SOURCE_HEIGHT=${CAPTURE_HEIGHT}
+    SOURCE_OFFSET_X=${CAPTURE_OFFSET_X}
+    SOURCE_OFFSET_Y=${CAPTURE_OFFSET_Y}
+    ;;
+  *)
+    echo "ERROR: Unsupported CAPTURE_MODE '${CAPTURE_MODE}'. Use 'full' or 'crop'."
+    exit 1
+    ;;
+esac
+
+if [ "${FRAMING_DEBUG}" = "true" ]; then
+  mkdir -p "${FRAMING_DEBUG_DIR}"
+  if ! ffmpeg \
+    -y \
+    -nostdin \
+    -f x11grab \
+    -video_size ${WIDTH}x${HEIGHT} \
+    -i :99.0+0,0 \
+    -frames:v 1 \
+    "${FRAMING_DEBUG_DIR}/x-display.png" >/dev/null 2>&1; then
+    echo "WARNING: Failed to write X display debug frame to ${FRAMING_DEBUG_DIR}/x-display.png" >&2
+  fi
+fi
+
+echo "Starting FFmpeg capture (${CAPTURE_MODE}: ${SOURCE_WIDTH}x${SOURCE_HEIGHT}+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps)..."
 exec ffmpeg \
   -nostdin \
   -f x11grab \
   -framerate ${FPS} \
-  -video_size ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT} \
-  -i :99.0+${CAPTURE_OFFSET_X},${CAPTURE_OFFSET_Y} \
+  -video_size ${SOURCE_WIDTH}x${SOURCE_HEIGHT} \
+  -i :99.0+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} \
   -f pulse \
   -ac 2 \
   -i virtual_speaker.monitor \

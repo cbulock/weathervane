@@ -56,17 +56,20 @@ Key environment variables:
 | `LOCATION` | empty | Forecast location to set in RetroCast |
 | `SCREEN_WIDTH` | `960` | X display width |
 | `SCREEN_HEIGHT` | `720` | X display height |
+| `CAPTURE_MODE` | `full` | Capture the full X display, or set `crop` to use `CAPTURE_*` overrides |
 | `FRAMERATE` | `30` | Capture frame rate |
-| `CAPTURE_WIDTH` | `930` | Width of the captured content window |
-| `CAPTURE_HEIGHT` | `600` | Height of the captured content window |
-| `CAPTURE_OFFSET_X` | `15` | Horizontal capture offset |
-| `CAPTURE_OFFSET_Y` | `0` | Vertical capture offset |
+| `CAPTURE_WIDTH` | `960` | Cropped capture width when `CAPTURE_MODE=crop` |
+| `CAPTURE_HEIGHT` | `720` | Cropped capture height when `CAPTURE_MODE=crop` |
+| `CAPTURE_OFFSET_X` | `0` | Horizontal crop offset when `CAPTURE_MODE=crop` |
+| `CAPTURE_OFFSET_Y` | `0` | Vertical crop offset when `CAPTURE_MODE=crop` |
 | `VIDEO_BITRATE` | `2500k` | HLS video bitrate |
 | `AUDIO_BITRATE` | `128k` | HLS audio bitrate |
 | `FFMPEG_PRESET` | `veryfast` | FFmpeg x264 preset |
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
+| `FRAMING_DEBUG` | `false` | Write X11 and Puppeteer framing artifacts for calibration |
+| `FRAMING_DEBUG_DIR` | `/tmp/hls/debug` | Directory for framing screenshots and metrics |
 | `EPG_CHANNEL_ID` | `weathervane.retro` | XMLTV channel id used in `/epg.xml` |
 | `EPG_CHANNEL_NAME` | `WeatherVane RetroCast` | XMLTV channel display name |
 | `EPG_CHANNEL_ICON` | `https://weather.com/retro/assets/icon.png` | XMLTV channel icon URL used in `/epg.xml` |
@@ -88,6 +91,7 @@ Key environment variables:
 
 - **No audio**: verify `virtual_speaker.monitor` exists in PulseAudio.
 - **Black screen**: check that Xvfb is running on `:99`.
+- **Top/right edges are cropped**: leave `CAPTURE_MODE=full` for the default full-display capture. If you need manual framing, switch to `CAPTURE_MODE=crop`, enable `FRAMING_DEBUG=true`, and inspect `/tmp/hls/debug` before changing `CAPTURE_*`.
 - **High CPU**: lower `FRAMERATE` or use `FFMPEG_PRESET=ultrafast`.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
 - **Need to inspect the browser**: set `ENABLE_VNC=true` and expose port `5900`.
