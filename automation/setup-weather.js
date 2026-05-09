@@ -8,6 +8,7 @@ const CDP_HOST = process.env.CDP_HOST || '127.0.0.1';
 const CDP_PORT = process.env.CDP_PORT || '9222';
 const SCREEN_WIDTH = Number.parseInt(process.env.SCREEN_WIDTH || '960', 10);
 const SCREEN_HEIGHT = Number.parseInt(process.env.SCREEN_HEIGHT || '720', 10);
+const FRAME_SAFE_MARGIN = Number.parseInt(process.env.FRAME_SAFE_MARGIN || '12', 10);
 const WATCH_MODE = process.argv.includes('--watch');
 const WATCH_INTERVAL_MS = Number.parseInt(process.env.START_BUTTON_WATCH_INTERVAL_MS || '5000', 10);
 const FRAMING_DEBUG = process.env.FRAMING_DEBUG === 'true';
@@ -147,8 +148,69 @@ async function hideCursor(page) {
   });
 }
 
+async function applySafeFraming(page) {
+  const framing = await page.evaluate(safeMargin => {
+    const root = document.querySelector('#__nuxt') || document.body.firstElementChild || document.body;
+    if (!root) {
+      return null;
+    }
+
+    if (!root.dataset.weathervaneOriginalStyle) {
+      root.dataset.weathervaneOriginalStyle = root.getAttribute('style') || '';
+    }
+
+    root.setAttribute('style', root.dataset.weathervaneOriginalStyle);
+
+    const rect = root.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const availableWidth = Math.max(1, viewportWidth - safeMargin * 2);
+    const availableHeight = Math.max(1, viewportHeight - safeMargin * 2);
+    const scale = Math.min(availableWidth / rect.width, availableHeight / rect.height, 1);
+    const offsetX = Math.max(safeMargin, (viewportWidth - rect.width * scale) / 2);
+    const offsetY = Math.max(safeMargin, (viewportHeight - rect.height * scale) / 2);
+
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
+    document.body.style.backgroundColor = '#000';
+
+    root.style.position = 'absolute';
+    root.style.left = `${offsetX}px`;
+    root.style.top = `${offsetY}px`;
+    root.style.width = `${rect.width}px`;
+    root.style.height = `${rect.height}px`;
+    root.style.transformOrigin = 'top left';
+    root.style.transform = `scale(${scale})`;
+
+    root.dataset.weathervaneScale = scale.toFixed(6);
+    root.dataset.weathervaneOffsetX = offsetX.toFixed(2);
+    root.dataset.weathervaneOffsetY = offsetY.toFixed(2);
+    root.dataset.weathervaneSafeMargin = String(safeMargin);
+
+    return {
+      scale,
+      offsetX,
+      offsetY,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth,
+      viewportHeight,
+      safeMargin,
+    };
+  }, FRAME_SAFE_MARGIN);
+
+  if (framing) {
+    console.log(
+      `Applied safe framing scale=${framing.scale.toFixed(4)} offset=${framing.offsetX.toFixed(1)},${framing.offsetY.toFixed(1)} margin=${framing.safeMargin}`
+    );
+  }
+}
+
 async function collectFramingMetrics(page) {
   return page.evaluate(() => {
+    const root = document.querySelector('#__nuxt') || document.body.firstElementChild || document.body;
     const summarize = (selector, limit = 10) =>
       Array.from(document.querySelectorAll(selector)).slice(0, limit).map(el => {
         const rect = el.getBoundingClientRect();
@@ -194,6 +256,14 @@ async function collectFramingMetrics(page) {
             offsetLeft: window.visualViewport.offsetLeft,
             offsetTop: window.visualViewport.offsetTop,
             scale: window.visualViewport.scale,
+          }
+        : null,
+      framing: root
+        ? {
+            scale: root.dataset.weathervaneScale || null,
+            offsetX: root.dataset.weathervaneOffsetX || null,
+            offsetY: root.dataset.weathervaneOffsetY || null,
+            safeMargin: root.dataset.weathervaneSafeMargin || null,
           }
         : null,
       elements: {
@@ -289,6 +359,7 @@ async function setLocation(page, location) {
 async function startRetrocast(page) {
   console.log('Starting RetroCast...');
   await normalizeViewport(page);
+  await applySafeFraming(page);
 
   const startBtn = await findButtonByText(page, /start\s*retrocast/i);
 
@@ -300,6 +371,7 @@ async function startRetrocast(page) {
     await dispatchFullClick(startBtn);
     const countdownCleared = await waitForCountdownToClear(page, 8000);
     await normalizeViewport(page);
+    await applySafeFraming(page);
     console.log(`Clicked Start RetroCast control on attempt ${attempt}`);
 
     if (countdownCleared) {
@@ -324,6 +396,7 @@ async function clickStartIfPresent(page) {
   await dispatchFullClick(startBtn);
   const countdownCleared = await waitForCountdownToClear(page, 8000);
   await normalizeViewport(page);
+  await applySafeFraming(page);
   await hideCursor(page);
   await writeFramingDebugArtifacts(page, 'watch-recovery');
 
@@ -379,6 +452,7 @@ async function main() {
 
   await page.waitForSelector('body', { timeout: 30000 });
   await normalizeViewport(page);
+  await applySafeFraming(page);
   await hideCursor(page);
   await sleep(3000);
 
@@ -387,6 +461,7 @@ async function main() {
     while (true) {
       try {
         await normalizeViewport(page);
+        await applySafeFraming(page);
         await hideCursor(page);
         await dismissOverlays(page);
         const clicked = await clickStartIfPresent(page);
@@ -421,6 +496,7 @@ async function main() {
 
   await unmuteAudio(page);
   await normalizeViewport(page);
+  await applySafeFraming(page);
   await hideCursor(page);
   await writeFramingDebugArtifacts(page, 'post-setup');
   await sleep(1000);

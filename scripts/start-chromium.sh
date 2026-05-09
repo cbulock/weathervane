@@ -34,6 +34,8 @@ fi
   --disable-features=TranslateUI \
   --window-size=${WIDTH},${HEIGHT} \
   --window-position=0,0 \
+  --force-device-scale-factor=1 \
+  --high-dpi-support=1 \
   --kiosk \
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/chromium-profile \

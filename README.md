@@ -56,6 +56,7 @@ Key environment variables:
 | `LOCATION` | empty | Forecast location to set in RetroCast |
 | `SCREEN_WIDTH` | `960` | X display width |
 | `SCREEN_HEIGHT` | `720` | X display height |
+| `FRAME_SAFE_MARGIN` | `12` | Shrinks and insets the page slightly so edge content survives minor capture/player clipping |
 | `CAPTURE_MODE` | `full` | Capture the full X display, or set `crop` to use `CAPTURE_*` overrides |
 | `FRAMERATE` | `30` | Capture frame rate |
 | `CAPTURE_WIDTH` | `960` | Cropped capture width when `CAPTURE_MODE=crop` |
@@ -91,6 +92,7 @@ Key environment variables:
 
 - **No audio**: verify `virtual_speaker.monitor` exists in PulseAudio.
 - **Black screen**: check that Xvfb is running on `:99`.
+- **Edges still look clipped with full capture**: increase `FRAME_SAFE_MARGIN` a bit so the rendered page sits farther away from the stream edges, then use `FRAMING_DEBUG=true` to compare the browser frame and X display artifacts.
 - **Top/right edges are cropped**: leave `CAPTURE_MODE=full` for the default full-display capture. If you need manual framing, switch to `CAPTURE_MODE=crop`, enable `FRAMING_DEBUG=true`, and inspect `/tmp/hls/debug` before changing `CAPTURE_*`.
 - **High CPU**: lower `FRAMERATE` or use `FFMPEG_PRESET=ultrafast`.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.

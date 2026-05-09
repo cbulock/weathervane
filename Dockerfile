@@ -65,6 +65,7 @@ RUN mkdir -p /tmp/hls /tmp/chromium-profile
 # Set environment defaults
 ENV SCREEN_WIDTH=960 \
     SCREEN_HEIGHT=720 \
+    FRAME_SAFE_MARGIN=12 \
     CAPTURE_MODE=full \
     CAPTURE_WIDTH=960 \
     CAPTURE_HEIGHT=720 \
