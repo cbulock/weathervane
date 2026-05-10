@@ -6,6 +6,7 @@ FFMPEG_IDLE_TIMEOUT=${FFMPEG_IDLE_TIMEOUT:-60}
 FFMPEG_MANAGER_POLL_INTERVAL=${FFMPEG_MANAGER_POLL_INTERVAL:-2}
 FFMPEG_STARTUP_GRACE=${FFMPEG_STARTUP_GRACE:-20}
 FFMPEG_START_TS_FILE=${FFMPEG_START_TS_FILE:-/tmp/ffmpeg-started-at}
+HLS_FILES_DIR=${HLS_FILES_DIR:-$(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)}
 
 is_on_demand_enabled() {
   [ "${FFMPEG_ON_DEMAND}" = "true" ]
@@ -32,7 +33,7 @@ clear_ffmpeg_state() {
 }
 
 clear_hls_stream_artifacts() {
-  find /tmp/hls -maxdepth 1 -type f \( -name 'stream.m3u8' -o -name 'stream.m3u8.tmp' -o -name 'segment_*.ts' \) -delete 2>/dev/null || true
+  find "${HLS_FILES_DIR}" -maxdepth 1 -type f \( -name 'stream.m3u8' -o -name 'stream.m3u8.tmp' -o -name 'segment_*.ts' \) -delete 2>/dev/null || true
 }
 
 has_recent_hls_activity() {
@@ -40,10 +41,16 @@ has_recent_hls_activity() {
     return 1
   fi
 
-  local now modified
+  local now last_request
   now=$(date +%s)
-  modified=$(stat -c %Y "${HLS_ACTIVITY_LOG}" 2>/dev/null || echo 0)
-  [ $((now - modified)) -lt "${FFMPEG_IDLE_TIMEOUT}" ]
+  last_request=$(tail -n 1 "${HLS_ACTIVITY_LOG}" 2>/dev/null | awk '{print $1}')
+
+  if [ -z "${last_request}" ]; then
+    return 1
+  fi
+
+  last_request=${last_request%.*}
+  [ $((now - last_request)) -lt "${FFMPEG_IDLE_TIMEOUT}" ]
 }
 
 is_within_ffmpeg_startup_grace() {

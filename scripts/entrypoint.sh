@@ -86,8 +86,9 @@ bash /app/scripts/start-pulseaudio.sh
 
 # Step 4: Start nginx for HLS serving
 prepare_hls_dir
+echo "HLS backing path: $(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)"
 rm -f /tmp/hls/viewer-activity.log /tmp/ffmpeg-started-at
-EPG_PATH=/tmp/hls/epg.xml
+EPG_PATH="$(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)/epg.xml"
 if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
   echo "Failed to generate EPG file at ${EPG_PATH}" >&2
   exit 1

@@ -20,10 +20,11 @@ HLS_TIME=${HLS_SEGMENT_DURATION:-4}
 HLS_SIZE=${HLS_LIST_SIZE:-5}
 FRAMING_DEBUG=${FRAMING_DEBUG:-false}
 FRAMING_DEBUG_DIR=${FRAMING_DEBUG_DIR:-/tmp/hls/debug}
+HLS_FILES_DIR=$(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)
 
 export DISPLAY=:99
 
-mkdir -p /tmp/hls
+mkdir -p "${HLS_FILES_DIR}"
 
 for i in $(seq 1 30); do
   if pactl list short sources | grep -q '^.*virtual_speaker\.monitor'; then
@@ -75,7 +76,7 @@ fi
 
 if is_gpu_enabled; then
   require_vaapi_runtime
-  echo "Starting FFmpeg capture with Intel VAAPI (${CAPTURE_MODE}: ${SOURCE_WIDTH}x${SOURCE_HEIGHT}+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps)..."
+  echo "Starting FFmpeg capture with Intel VAAPI (${CAPTURE_MODE}: ${SOURCE_WIDTH}x${SOURCE_HEIGHT}+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps, output: ${HLS_FILES_DIR})..."
   exec ffmpeg \
     -nostdin \
     -vaapi_device "${VAAPI_DEVICE}" \
@@ -101,12 +102,12 @@ if is_gpu_enabled; then
     -hls_time ${HLS_TIME} \
     -hls_list_size ${HLS_SIZE} \
     -hls_flags delete_segments+append_list \
-    -hls_segment_filename '/tmp/hls/segment_%03d.ts' \
+    -hls_segment_filename "${HLS_FILES_DIR}/segment_%03d.ts" \
     -hls_allow_cache 0 \
-    /tmp/hls/stream.m3u8
+    "${HLS_FILES_DIR}/stream.m3u8"
 fi
 
-echo "Starting FFmpeg capture (${CAPTURE_MODE}: ${SOURCE_WIDTH}x${SOURCE_HEIGHT}+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps)..."
+echo "Starting FFmpeg capture (${CAPTURE_MODE}: ${SOURCE_WIDTH}x${SOURCE_HEIGHT}+${SOURCE_OFFSET_X},${SOURCE_OFFSET_Y} -> ${WIDTH}x${HEIGHT} @ ${FPS}fps, output: ${HLS_FILES_DIR})..."
 exec ffmpeg \
   -nostdin \
   -f x11grab \
@@ -137,6 +138,6 @@ exec ffmpeg \
   -hls_time ${HLS_TIME} \
   -hls_list_size ${HLS_SIZE} \
   -hls_flags delete_segments+append_list \
-  -hls_segment_filename '/tmp/hls/segment_%03d.ts' \
+  -hls_segment_filename "${HLS_FILES_DIR}/segment_%03d.ts" \
   -hls_allow_cache 0 \
-  /tmp/hls/stream.m3u8
+  "${HLS_FILES_DIR}/stream.m3u8"

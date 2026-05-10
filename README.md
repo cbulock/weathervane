@@ -134,6 +134,7 @@ This reduces idle CPU usage, but it changes behavior:
 - The first viewer after an idle period may see a short cold-start delay while FFmpeg creates a fresh playlist and segments.
 - `/health` stays green while the container is intentionally idle, as long as Chromium and the FFmpeg manager are healthy.
 - “Active connection” means **recent HLS requests**, not a single long-lived client socket.
+- The manager keys off real timestamped request entries, not just the existence of the activity log file.
 
 ## In-memory HLS storage
 
@@ -141,6 +142,7 @@ WeatherVane now prefers to keep live HLS artifacts in memory instead of on disk:
 
 - In plain `docker run` setups, startup points `/tmp/hls` at `HLS_ROOT`, which defaults to `/dev/shm/hls`.
 - In Compose, the existing tmpfs mount on `/tmp/hls` is already memory-backed, so startup keeps using that RAM-backed path.
+- Startup logs now print the resolved HLS backing path so it is easier to confirm whether `/tmp/hls` is landing on tmpfs or `/dev/shm`.
 
 This keeps the nginx and script paths stable while moving the playlist and transport stream segments onto memory-backed storage by default.
 
@@ -157,6 +159,7 @@ This keeps the nginx and script paths stable while moving the playlist and trans
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
 - **On-demand mode does not start instantly**: expected. The first HLS request only signals activity; FFmpeg still needs a moment to start and create a fresh playlist.
 - **On-demand mode never starts FFmpeg**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.
+- **Logs still mention `/tmp/hls`**: the public in-container path stays `/tmp/hls`, but startup logs and FFmpeg output now show the resolved backing path (for example `/dev/shm/hls`) when memory-backed storage is active.
 - **Need the in-memory files somewhere else**: override `HLS_ROOT` and restart the container. WeatherVane still serves the stream from `/hls/...`; `HLS_ROOT` only changes the backing path inside the container.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
 - **Recurring D-Bus connection errors in logs**: the container now starts private session and system D-Bus instances during startup. If you still see repeated `system_bus_socket` connection failures, you are likely running an older image/container.
