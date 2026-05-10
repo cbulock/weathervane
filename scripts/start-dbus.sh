@@ -8,8 +8,9 @@ chmod 700 "$XDG_RUNTIME_DIR"
 DBUS_BUS_PATH=${DBUS_BUS_PATH:-$XDG_RUNTIME_DIR/bus}
 SYSTEM_DBUS_DIR=${SYSTEM_DBUS_DIR:-/run/dbus}
 SYSTEM_DBUS_PIDFILE=${SYSTEM_DBUS_PIDFILE:-/tmp/system-dbus.pid}
+SYSTEM_DBUS_RUNTIME_PIDFILE=${SYSTEM_DBUS_RUNTIME_PIDFILE:-${SYSTEM_DBUS_DIR}/pid}
 
-rm -f "$DBUS_BUS_PATH" /tmp/dbus.pid "$SYSTEM_DBUS_PIDFILE" "${SYSTEM_DBUS_DIR}/system_bus_socket"
+rm -f "$DBUS_BUS_PATH" /tmp/dbus.pid "$SYSTEM_DBUS_PIDFILE" "$SYSTEM_DBUS_RUNTIME_PIDFILE" "${SYSTEM_DBUS_DIR}/system_bus_socket"
 mkdir -p "$SYSTEM_DBUS_DIR"
 
 dbus-uuidgen --ensure=/etc/machine-id >/dev/null 2>&1 || true

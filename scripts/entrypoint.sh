@@ -67,6 +67,7 @@ cleanup() {
   kill_pidfile /tmp/xvfb.pid
   kill_pidfile /tmp/pulseaudio.pid
   kill_pidfile /tmp/x11vnc.pid
+  rm -f /run/dbus/pid /run/dbus/system_bus_socket
   exit 0
 }
 trap cleanup EXIT SIGTERM SIGINT
