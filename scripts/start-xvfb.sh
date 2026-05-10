@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-WIDTH=${SCREEN_WIDTH:-960}
-HEIGHT=${SCREEN_HEIGHT:-720}
+WIDTH=${SCREEN_WIDTH:-640}
+HEIGHT=${SCREEN_HEIGHT:-480}
 
 rm -f /tmp/.X99-lock
 rm -f /tmp/.X11-unix/X99

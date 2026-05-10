@@ -63,18 +63,18 @@ RUN sed -i 's/\r$//' /app/scripts/*.sh \
 RUN mkdir -p /tmp/hls /tmp/chromium-profile
 
 # Set environment defaults
-ENV SCREEN_WIDTH=960 \
-    SCREEN_HEIGHT=720 \
+ENV SCREEN_WIDTH=640 \
+    SCREEN_HEIGHT=480 \
     FRAME_SAFE_MARGIN=12 \
     CAPTURE_MODE=full \
-    CAPTURE_WIDTH=960 \
-    CAPTURE_HEIGHT=720 \
+    CAPTURE_WIDTH=640 \
+    CAPTURE_HEIGHT=480 \
     CAPTURE_OFFSET_X=0 \
     CAPTURE_OFFSET_Y=0 \
-    FRAMERATE=30 \
-    VIDEO_BITRATE=2500k \
+    FRAMERATE=15 \
+    VIDEO_BITRATE=1200k \
     AUDIO_BITRATE=128k \
-    FFMPEG_PRESET=veryfast \
+    FFMPEG_PRESET=ultrafast \
     HLS_SEGMENT_DURATION=4 \
     HLS_LIST_SIZE=5 \
     HLS_PORT=8080 \

@@ -3,7 +3,7 @@ set -e
 
 echo "=== WeatherVane IPTV Stream ==="
 echo "Location: ${LOCATION:-auto}"
-echo "Resolution: ${SCREEN_WIDTH:-960}x${SCREEN_HEIGHT:-720}"
+echo "Resolution: ${SCREEN_WIDTH:-640}x${SCREEN_HEIGHT:-480}"
 echo "Stream will be available at http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
 echo "EPG will be available at http://localhost:${HLS_PORT:-8080}/epg.xml"
 echo "==========================="
@@ -31,6 +31,7 @@ cleanup() {
   kill_pidfile /tmp/ffmpeg.pid
   kill_pidfile /tmp/automation-watch.pid
   kill_pidfile /tmp/chromium.pid
+  kill_pidfile /tmp/dbus.pid
   kill_pidfile /tmp/nginx.pid
   kill_pidfile /tmp/xvfb.pid
   kill_pidfile /tmp/pulseaudio.pid
@@ -43,10 +44,14 @@ trap cleanup EXIT SIGTERM SIGINT
 bash /app/scripts/start-xvfb.sh
 export DISPLAY=:99
 
-# Step 2: Start PulseAudio
+# Step 2: Start session D-Bus for Chromium
+bash /app/scripts/start-dbus.sh
+export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}
+
+# Step 3: Start PulseAudio
 bash /app/scripts/start-pulseaudio.sh
 
-# Step 3: Start nginx for HLS serving
+# Step 4: Start nginx for HLS serving
 mkdir -p /tmp/hls
 EPG_PATH=/tmp/hls/epg.xml
 if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
@@ -57,28 +62,28 @@ nginx -c /app/config/nginx.conf &
 echo $! > /tmp/nginx.pid
 echo "nginx started"
 
-# Step 4: Start Chromium
+# Step 5: Start Chromium
 bash /app/scripts/start-chromium.sh
 
-# Step 5: Optional VNC for debugging
+# Step 6: Optional VNC for debugging
 if [ "${ENABLE_VNC}" = "true" ]; then
   echo "Starting VNC server on :5900..."
   x11vnc -display :99 -forever -nopw -shared -rfbport 5900 &
   echo $! > /tmp/x11vnc.pid
 fi
 
-# Step 6: Run browser automation (set location, start retrocast, unmute)
+# Step 7: Run browser automation (set location, start retrocast, unmute)
 echo "Running browser automation..."
 sleep 5
 cd /app/automation && node setup-weather.js
 echo "Automation complete"
 
-# Step 7: Keep watching for the Start RetroCast button in the background
+# Step 8: Keep watching for the Start RetroCast button in the background
 echo "Starting automation watcher..."
 cd /app/automation && node setup-weather.js --watch &
 echo $! > /tmp/automation-watch.pid
 
-# Step 8: Start FFmpeg capture
+# Step 9: Start FFmpeg capture
 bash /app/scripts/start-ffmpeg.sh &
 FFMPEG_PID=$!
 echo $FFMPEG_PID > /tmp/ffmpeg.pid
