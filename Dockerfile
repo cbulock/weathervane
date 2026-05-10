@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     fonts-noto-color-emoji \
     fonts-dejavu-core \
+    dbus \
     dbus-x11 \
     libnss3 \
     libatk-bridge2.0-0 \

@@ -120,7 +120,8 @@ This first pass keeps the current Xvfb display path. That means:
 - **FFmpeg VAAPI fails on older Intel graphics**: try `LIBVA_DRIVER_NAME=i965` instead of `iHD`.
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
-- **Recurring Chromium D-Bus errors in logs**: the container now starts a private session bus for Chromium, but a few browser warnings from missing desktop services can still appear and are usually harmless if `/health` stays green and the HLS playlist keeps advancing.
+- **Recurring D-Bus connection errors in logs**: the container now starts private session and system D-Bus instances during startup. If you still see repeated `system_bus_socket` connection failures, you are likely running an older image/container.
+- **Single Chromium `UPower` D-Bus warning**: a one-off `org.freedesktop.UPower` lookup failure can still appear in minimal containers because no power-management service is installed. It is usually harmless if Chromium reaches ready state and `/health` stays green.
 - **Need to inspect the browser**: set `ENABLE_VNC=true` and expose port `5900`.
 
 ## CI

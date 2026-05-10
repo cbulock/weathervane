@@ -6,6 +6,15 @@ echo "Starting PulseAudio..."
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/runtime-root}
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
+export HOME=${HOME:-/root}
+mkdir -p "$HOME/.config/pulse"
+
+PULSE_COOKIE_PATH=${PULSE_COOKIE_PATH:-$HOME/.config/pulse/cookie}
+if [ ! -f "$PULSE_COOKIE_PATH" ]; then
+  dd if=/dev/urandom of="$PULSE_COOKIE_PATH" bs=256 count=1 status=none
+  chmod 600 "$PULSE_COOKIE_PATH"
+fi
+export PULSE_COOKIE="$PULSE_COOKIE_PATH"
 
 rm -rf /tmp/pulse-* "$XDG_RUNTIME_DIR/pulse"
 

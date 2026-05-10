@@ -37,6 +37,7 @@ cleanup() {
   kill_pidfile /tmp/automation-watch.pid
   kill_pidfile /tmp/chromium.pid
   kill_pidfile /tmp/dbus.pid
+  kill_pidfile /tmp/system-dbus.pid
   kill_pidfile /tmp/nginx.pid
   kill_pidfile /tmp/xvfb.pid
   kill_pidfile /tmp/pulseaudio.pid
@@ -52,6 +53,7 @@ export DISPLAY=:99
 # Step 2: Start session D-Bus for Chromium
 bash /app/scripts/start-dbus.sh
 export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}
+export DBUS_SYSTEM_BUS_ADDRESS=${DBUS_SYSTEM_BUS_ADDRESS:-unix:path=/run/dbus/system_bus_socket}
 
 # Step 3: Start PulseAudio
 bash /app/scripts/start-pulseaudio.sh
