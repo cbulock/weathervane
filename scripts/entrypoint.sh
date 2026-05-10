@@ -11,6 +11,11 @@ else
 fi
 echo "Stream will be available at http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
 echo "EPG will be available at http://localhost:${HLS_PORT:-8080}/epg.xml"
+if [ "${FFMPEG_ON_DEMAND:-false}" = "true" ]; then
+  echo "FFmpeg mode: on-demand (${FFMPEG_IDLE_TIMEOUT:-60}s idle timeout)"
+else
+  echo "FFmpeg mode: always on"
+fi
 echo "==========================="
 
 export DISPLAY=:99
@@ -33,6 +38,7 @@ kill_pidfile() {
 
 cleanup() {
   echo "Shutting down..."
+  kill_pidfile /tmp/ffmpeg-manager.pid
   kill_pidfile /tmp/ffmpeg.pid
   kill_pidfile /tmp/automation-watch.pid
   kill_pidfile /tmp/chromium.pid
@@ -60,6 +66,7 @@ bash /app/scripts/start-pulseaudio.sh
 
 # Step 4: Start nginx for HLS serving
 mkdir -p /tmp/hls
+rm -f /tmp/hls/viewer-activity.log /tmp/ffmpeg-started-at
 EPG_PATH=/tmp/hls/epg.xml
 if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
   echo "Failed to generate EPG file at ${EPG_PATH}" >&2
@@ -90,10 +97,16 @@ echo "Starting automation watcher..."
 cd /app/automation && node setup-weather.js --watch &
 echo $! > /tmp/automation-watch.pid
 
-# Step 9: Start FFmpeg capture
-bash /app/scripts/start-ffmpeg.sh &
-FFMPEG_PID=$!
-echo $FFMPEG_PID > /tmp/ffmpeg.pid
+# Step 9: Start FFmpeg capture or on-demand manager
+if [ "${FFMPEG_ON_DEMAND:-false}" = "true" ]; then
+  bash /app/scripts/manage-ffmpeg.sh &
+  MANAGER_PID=$!
+  echo $MANAGER_PID > /tmp/ffmpeg-manager.pid
+else
+  bash /app/scripts/start-ffmpeg.sh &
+  FFMPEG_PID=$!
+  echo $FFMPEG_PID > /tmp/ffmpeg.pid
+fi
 
 echo "==========================="
 echo "WeatherVane is live!"
@@ -101,4 +114,8 @@ echo "Stream: http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
 echo "EPG: http://localhost:${HLS_PORT:-8080}/epg.xml"
 echo "==========================="
 
-wait $FFMPEG_PID
+if [ "${FFMPEG_ON_DEMAND:-false}" = "true" ]; then
+  wait $MANAGER_PID
+else
+  wait $FFMPEG_PID
+fi

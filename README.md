@@ -72,6 +72,10 @@ Key environment variables:
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
+| `FFMPEG_ON_DEMAND` | `false` | Start FFmpeg only after recent HLS requests instead of running continuously |
+| `FFMPEG_IDLE_TIMEOUT` | `60` | Seconds of no HLS activity before FFmpeg stops in on-demand mode |
+| `FFMPEG_MANAGER_POLL_INTERVAL` | `2` | Seconds between on-demand manager checks for recent HLS activity |
+| `FFMPEG_STARTUP_GRACE` | `20` | Health-check grace window after FFmpeg starts in on-demand mode |
 | `FRAMING_DEBUG` | `false` | Write X11 and Puppeteer framing artifacts for calibration |
 | `FRAMING_DEBUG_DIR` | `/tmp/hls/debug` | Directory for framing screenshots and metrics |
 | `EPG_CHANNEL_ID` | `weathervane.retro` | XMLTV channel id used in `/epg.xml` |
@@ -87,6 +91,8 @@ Key environment variables:
 - `docker-compose.yml` - runtime wiring and defaults
 - `scripts/entrypoint.sh` - orchestrates Xvfb, PulseAudio, Chromium, automation, nginx, and FFmpeg
 - `scripts/gpu-common.sh` - shared Intel VAAPI runtime checks for Chromium and FFmpeg
+- `scripts/on-demand-common.sh` - shared helpers for HLS activity tracking and FFmpeg on-demand state
+- `scripts/manage-ffmpeg.sh` - on-demand FFmpeg supervisor for recent HLS traffic
 - `scripts/start-ffmpeg.sh` - capture and HLS generation
 - `scripts/start-chromium.sh` - browser startup flags
 - `automation/setup-weather.js` - location/start/audio automation, including the Start RetroCast watcher
@@ -109,6 +115,22 @@ This first pass keeps the current Xvfb display path. That means:
 - **Chromium** can enable Intel VAAPI media acceleration as a best-effort path.
 - **Chromium compositing stays software-based** under Xvfb, so this is not full GPU rendering for the browser UI.
 
+## Optional on-demand FFmpeg mode
+
+WeatherVane can also run FFmpeg **only while the HLS stream has recent viewer traffic**.
+
+When `FFMPEG_ON_DEMAND=true`:
+
+1. nginx records `/hls/` requests into a local activity log.
+2. A small manager loop starts FFmpeg when recent HLS requests appear.
+3. FFmpeg stops after `FFMPEG_IDLE_TIMEOUT` seconds with no recent HLS activity.
+
+This reduces idle CPU usage, but it changes behavior:
+
+- The first viewer after an idle period may see a short cold-start delay while FFmpeg creates a fresh playlist and segments.
+- `/health` stays green while the container is intentionally idle, as long as Chromium and the FFmpeg manager are healthy.
+- “Active connection” means **recent HLS requests**, not a single long-lived client socket.
+
 ## Troubleshooting
 
 - **No audio**: verify `virtual_speaker.monitor` exists in PulseAudio.
@@ -119,6 +141,8 @@ This first pass keeps the current Xvfb display path. That means:
 - **GPU mode fails immediately**: confirm you are using an x86 Linux build, `ENABLE_GPU=true`, and `/dev/dri/renderD128` is mounted into the container with access to the host `render` group.
 - **FFmpeg VAAPI fails on older Intel graphics**: try `LIBVA_DRIVER_NAME=i965` instead of `iHD`.
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
+- **On-demand mode does not start instantly**: expected. The first HLS request only signals activity; FFmpeg still needs a moment to start and create a fresh playlist.
+- **On-demand mode never starts FFmpeg**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
 - **Recurring D-Bus connection errors in logs**: the container now starts private session and system D-Bus instances during startup. If you still see repeated `system_bus_socket` connection failures, you are likely running an older image/container.
 - **Single Chromium `UPower` D-Bus warning**: a one-off `org.freedesktop.UPower` lookup failure can still appear in minimal containers because no power-management service is installed. It is usually harmless if Chromium reaches ready state and `/health` stays green.
