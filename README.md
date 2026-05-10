@@ -69,6 +69,8 @@ Key environment variables:
 | `ENABLE_GPU` | `false` | Opt in to Intel VAAPI acceleration on Linux Docker hosts with `/dev/dri` passthrough |
 | `VAAPI_DEVICE` | `/dev/dri/renderD128` | Intel render node passed into the container when `ENABLE_GPU=true` |
 | `LIBVA_DRIVER_NAME` | `iHD` | Intel VAAPI driver to load; set `i965` for older Intel GPUs if needed |
+| `VAAPI_QP` | `23` | Constant-quality QP used by the VAAPI encoder on drivers that only support CQP |
+| `VAAPI_QUALITY` | `4` | VAAPI encode speed/quality tradeoff; higher is faster |
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
@@ -115,6 +117,7 @@ This first pass keeps the current Xvfb display path. That means:
 - **FFmpeg** can use Intel VAAPI for H.264 encoding.
 - **Chromium** can enable Intel VAAPI media acceleration as a best-effort path.
 - **Chromium compositing stays software-based** under Xvfb, so this is not full GPU rendering for the browser UI.
+- Some Intel VAAPI drivers only support **CQP** rate control for H.264. WeatherVane therefore uses `VAAPI_QP` and `VAAPI_QUALITY` for the hardware encode path instead of forcing bitrate-based RC modes.
 
 ## Optional on-demand FFmpeg mode
 
@@ -150,6 +153,7 @@ This keeps the nginx and script paths stable while moving the playlist and trans
 - **High CPU**: the defaults now favor lighter CPU usage (`640x480`, `15fps`, `1200k`, `ultrafast`). If the host is still busy, lower `FRAMERATE` further or reduce the resolution again.
 - **GPU mode fails immediately**: confirm you are using an x86 Linux build, `ENABLE_GPU=true`, and `/dev/dri/renderD128` is mounted into the container with access to the host `render` group.
 - **FFmpeg VAAPI fails on older Intel graphics**: try `LIBVA_DRIVER_NAME=i965` instead of `iHD`.
+- **FFmpeg VAAPI rejects bitrate/rate-control settings**: the current hardware path uses CQP by default. Tune `VAAPI_QP` and `VAAPI_QUALITY` rather than expecting `VIDEO_BITRATE` to control the Intel VAAPI encoder on every driver.
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
 - **On-demand mode does not start instantly**: expected. The first HLS request only signals activity; FFmpeg still needs a moment to start and create a fresh playlist.
 - **On-demand mode never starts FFmpeg**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.

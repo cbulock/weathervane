@@ -14,6 +14,8 @@ FPS=${FRAMERATE:-15}
 VBITRATE=${VIDEO_BITRATE:-1200k}
 ABITRATE=${AUDIO_BITRATE:-128k}
 PRESET=${FFMPEG_PRESET:-ultrafast}
+VAAPI_QP=${VAAPI_QP:-23}
+VAAPI_QUALITY=${VAAPI_QUALITY:-4}
 HLS_TIME=${HLS_SEGMENT_DURATION:-4}
 HLS_SIZE=${HLS_LIST_SIZE:-5}
 FRAMING_DEBUG=${FRAMING_DEBUG:-false}
@@ -86,12 +88,11 @@ if is_gpu_enabled; then
     -i virtual_speaker.monitor \
     -vf scale=${WIDTH}:${HEIGHT},format=nv12,hwupload \
     -c:v h264_vaapi \
-    -b:v ${VBITRATE} \
-    -maxrate ${VBITRATE} \
-    -bufsize ${BUFSIZE} \
+    -rc_mode CQP \
+    -qp ${VAAPI_QP} \
+    -quality ${VAAPI_QUALITY} \
     -g ${GOP} \
     -keyint_min ${GOP} \
-    -sc_threshold 0 \
     -c:a aac \
     -b:a ${ABITRATE} \
     -ar 44100 \
