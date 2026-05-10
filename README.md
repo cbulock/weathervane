@@ -72,7 +72,7 @@ Key environment variables:
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
-| `FFMPEG_ON_DEMAND` | `false` | Start FFmpeg only after recent HLS requests instead of running continuously |
+| `FFMPEG_ON_DEMAND` | `true` | Start FFmpeg only after recent HLS requests instead of running continuously |
 | `FFMPEG_IDLE_TIMEOUT` | `60` | Seconds of no HLS activity before FFmpeg stops in on-demand mode |
 | `FFMPEG_MANAGER_POLL_INTERVAL` | `2` | Seconds between on-demand manager checks for recent HLS activity |
 | `FFMPEG_STARTUP_GRACE` | `20` | Health-check grace window after FFmpeg starts in on-demand mode |
