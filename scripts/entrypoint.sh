@@ -23,6 +23,25 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/runtime-root}
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 export PULSE_SERVER=${PULSE_SERVER:-unix:${XDG_RUNTIME_DIR}/pulse/native}
+export HLS_ROOT=${HLS_ROOT:-/dev/shm/hls}
+
+prepare_hls_dir() {
+  if mountpoint -q /tmp/hls 2>/dev/null; then
+    mkdir -p /tmp/hls
+    return
+  fi
+
+  if [ -d /dev/shm ] && [ "${HLS_ROOT}" != "/tmp/hls" ]; then
+    mkdir -p "${HLS_ROOT}"
+    if [ -e /tmp/hls ] && [ ! -L /tmp/hls ]; then
+      rm -rf /tmp/hls
+    fi
+    ln -sfn "${HLS_ROOT}" /tmp/hls
+    return
+  fi
+
+  mkdir -p /tmp/hls
+}
 
 kill_pidfile() {
   local pidfile=$1
@@ -65,7 +84,7 @@ export DBUS_SYSTEM_BUS_ADDRESS=${DBUS_SYSTEM_BUS_ADDRESS:-unix:path=/run/dbus/sy
 bash /app/scripts/start-pulseaudio.sh
 
 # Step 4: Start nginx for HLS serving
-mkdir -p /tmp/hls
+prepare_hls_dir
 rm -f /tmp/hls/viewer-activity.log /tmp/ffmpeg-started-at
 EPG_PATH=/tmp/hls/epg.xml
 if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then

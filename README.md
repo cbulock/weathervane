@@ -72,6 +72,7 @@ Key environment variables:
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
+| `HLS_ROOT` | `/dev/shm/hls` | Preferred in-memory backing directory for HLS artifacts when `/tmp/hls` is not already mounted as tmpfs |
 | `FFMPEG_ON_DEMAND` | `true` | Start FFmpeg only after recent HLS requests instead of running continuously |
 | `FFMPEG_IDLE_TIMEOUT` | `60` | Seconds of no HLS activity before FFmpeg stops in on-demand mode |
 | `FFMPEG_MANAGER_POLL_INTERVAL` | `2` | Seconds between on-demand manager checks for recent HLS activity |
@@ -131,6 +132,15 @@ This reduces idle CPU usage, but it changes behavior:
 - `/health` stays green while the container is intentionally idle, as long as Chromium and the FFmpeg manager are healthy.
 - “Active connection” means **recent HLS requests**, not a single long-lived client socket.
 
+## In-memory HLS storage
+
+WeatherVane now prefers to keep live HLS artifacts in memory instead of on disk:
+
+- In plain `docker run` setups, startup points `/tmp/hls` at `HLS_ROOT`, which defaults to `/dev/shm/hls`.
+- In Compose, the existing tmpfs mount on `/tmp/hls` is already memory-backed, so startup keeps using that RAM-backed path.
+
+This keeps the nginx and script paths stable while moving the playlist and transport stream segments onto memory-backed storage by default.
+
 ## Troubleshooting
 
 - **No audio**: verify `virtual_speaker.monitor` exists in PulseAudio.
@@ -143,6 +153,7 @@ This reduces idle CPU usage, but it changes behavior:
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
 - **On-demand mode does not start instantly**: expected. The first HLS request only signals activity; FFmpeg still needs a moment to start and create a fresh playlist.
 - **On-demand mode never starts FFmpeg**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.
+- **Need the in-memory files somewhere else**: override `HLS_ROOT` and restart the container. WeatherVane still serves the stream from `/hls/...`; `HLS_ROOT` only changes the backing path inside the container.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
 - **Recurring D-Bus connection errors in logs**: the container now starts private session and system D-Bus instances during startup. If you still see repeated `system_bus_socket` connection failures, you are likely running an older image/container.
 - **Single Chromium `UPower` D-Bus warning**: a one-off `org.freedesktop.UPower` lookup failure can still appear in minimal containers because no power-management service is installed. It is usually harmless if Chromium reaches ready state and `/health` stays green.
