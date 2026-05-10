@@ -21,6 +21,9 @@ services:
       - VIDEO_BITRATE=${VIDEO_BITRATE:-1200k}
       - AUDIO_BITRATE=${AUDIO_BITRATE:-128k}
       - FFMPEG_PRESET=${FFMPEG_PRESET:-ultrafast}
+      - ENABLE_GPU=${ENABLE_GPU:-false}
+      - VAAPI_DEVICE=${VAAPI_DEVICE:-/dev/dri/renderD128}
+      - LIBVA_DRIVER_NAME=${LIBVA_DRIVER_NAME:-iHD}
       - HLS_SEGMENT_DURATION=${HLS_SEGMENT_DURATION:-4}
       - HLS_LIST_SIZE=${HLS_LIST_SIZE:-5}
       - HLS_PORT=${HLS_PORT:-8080}
@@ -33,6 +36,11 @@ services:
       - EPG_PROGRAM_DESCRIPTION=${EPG_PROGRAM_DESCRIPTION:-Continuous Weather Channel RetroCast stream.}
       - TZ=${TZ:-America/New_York}
       - ENABLE_VNC=${ENABLE_VNC:-false}
+    # When ENABLE_GPU=true on a Linux host with Intel /dev/dri access, uncomment and adjust:
+    # devices:
+    #   - "${VAAPI_DEVICE:-/dev/dri/renderD128}:${VAAPI_DEVICE:-/dev/dri/renderD128}"
+    # group_add:
+    #   - "render"
     shm_size: '2gb'
     tmpfs:
       - /tmp/hls:size=100M

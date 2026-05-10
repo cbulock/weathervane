@@ -4,6 +4,11 @@ set -e
 echo "=== WeatherVane IPTV Stream ==="
 echo "Location: ${LOCATION:-auto}"
 echo "Resolution: ${SCREEN_WIDTH:-640}x${SCREEN_HEIGHT:-480}"
+if [ "${ENABLE_GPU:-false}" = "true" ]; then
+  echo "GPU mode: Intel VAAPI (${VAAPI_DEVICE:-/dev/dri/renderD128}, driver ${LIBVA_DRIVER_NAME:-iHD})"
+else
+  echo "GPU mode: disabled"
+fi
 echo "Stream will be available at http://localhost:${HLS_PORT:-8080}/hls/stream.m3u8"
 echo "EPG will be available at http://localhost:${HLS_PORT:-8080}/epg.xml"
 echo "==========================="

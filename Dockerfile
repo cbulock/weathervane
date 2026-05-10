@@ -39,7 +39,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11vnc \
     nodejs \
     npm \
+    libva2 \
+    libva-drm2 \
+    vainfo \
     && rm -rf /var/lib/apt/lists/*
+
+RUN set -e; \
+    arch="$(dpkg --print-architecture)"; \
+    if [ "$arch" = "amd64" ] || [ "$arch" = "i386" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends \
+        intel-media-va-driver \
+        i965-va-driver; \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # Create app directory
 RUN mkdir -p /app
@@ -75,6 +88,9 @@ ENV SCREEN_WIDTH=640 \
     VIDEO_BITRATE=1200k \
     AUDIO_BITRATE=128k \
     FFMPEG_PRESET=ultrafast \
+    ENABLE_GPU=false \
+    VAAPI_DEVICE=/dev/dri/renderD128 \
+    LIBVA_DRIVER_NAME=iHD \
     HLS_SEGMENT_DURATION=4 \
     HLS_LIST_SIZE=5 \
     HLS_PORT=8080 \

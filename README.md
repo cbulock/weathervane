@@ -66,6 +66,9 @@ Key environment variables:
 | `VIDEO_BITRATE` | `1200k` | HLS video bitrate |
 | `AUDIO_BITRATE` | `128k` | HLS audio bitrate |
 | `FFMPEG_PRESET` | `ultrafast` | FFmpeg x264 preset |
+| `ENABLE_GPU` | `false` | Opt in to Intel VAAPI acceleration on Linux Docker hosts with `/dev/dri` passthrough |
+| `VAAPI_DEVICE` | `/dev/dri/renderD128` | Intel render node passed into the container when `ENABLE_GPU=true` |
+| `LIBVA_DRIVER_NAME` | `iHD` | Intel VAAPI driver to load; set `i965` for older Intel GPUs if needed |
 | `HLS_SEGMENT_DURATION` | `4` | Segment duration in seconds |
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
@@ -83,10 +86,28 @@ Key environment variables:
 - `Dockerfile` - container image definition
 - `docker-compose.yml` - runtime wiring and defaults
 - `scripts/entrypoint.sh` - orchestrates Xvfb, PulseAudio, Chromium, automation, nginx, and FFmpeg
+- `scripts/gpu-common.sh` - shared Intel VAAPI runtime checks for Chromium and FFmpeg
 - `scripts/start-ffmpeg.sh` - capture and HLS generation
 - `scripts/start-chromium.sh` - browser startup flags
 - `automation/setup-weather.js` - location/start/audio automation, including the Start RetroCast watcher
 - `config/nginx.conf` - HLS serving config
+
+## Optional Intel iGPU mode
+
+WeatherVane now has an **opt-in** Intel VAAPI mode. The default path is still software rendering and software encoding.
+
+To enable Intel iGPU acceleration on a Linux Docker host:
+
+1. Set `ENABLE_GPU=true` in `.env`.
+2. Pass the Intel render node into the container by uncommenting the `devices` and `group_add` hints in `docker-compose.yml` or by providing equivalent Docker runtime flags.
+3. Leave `VAAPI_DEVICE=/dev/dri/renderD128` unless your Intel GPU uses a different render node.
+4. If VAAPI initialization fails on older Intel hardware, try `LIBVA_DRIVER_NAME=i965`.
+
+This first pass keeps the current Xvfb display path. That means:
+
+- **FFmpeg** can use Intel VAAPI for H.264 encoding.
+- **Chromium** can enable Intel VAAPI media acceleration as a best-effort path.
+- **Chromium compositing stays software-based** under Xvfb, so this is not full GPU rendering for the browser UI.
 
 ## Troubleshooting
 
@@ -95,6 +116,9 @@ Key environment variables:
 - **Edges still look clipped with full capture**: increase `FRAME_SAFE_MARGIN` a bit so the rendered page sits farther away from the stream edges, then use `FRAMING_DEBUG=true` to compare the browser frame and X display artifacts.
 - **Top/right edges are cropped**: leave `CAPTURE_MODE=full` for the default full-display capture. If you need manual framing, switch to `CAPTURE_MODE=crop`, enable `FRAMING_DEBUG=true`, and inspect `/tmp/hls/debug` before changing `CAPTURE_*`.
 - **High CPU**: the defaults now favor lighter CPU usage (`640x480`, `15fps`, `1200k`, `ultrafast`). If the host is still busy, lower `FRAMERATE` further or reduce the resolution again.
+- **GPU mode fails immediately**: confirm you are using an x86 Linux build, `ENABLE_GPU=true`, and `/dev/dri/renderD128` is mounted into the container with access to the host `render` group.
+- **FFmpeg VAAPI fails on older Intel graphics**: try `LIBVA_DRIVER_NAME=i965` instead of `iHD`.
+- **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.
 - **Recurring Chromium D-Bus errors in logs**: the container now starts a private session bus for Chromium, but a few browser warnings from missing desktop services can still appear and are usually harmless if `/health` stays green and the HLS playlist keeps advancing.
 - **Need to inspect the browser**: set `ENABLE_VNC=true` and expose port `5900`.
