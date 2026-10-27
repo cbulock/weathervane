@@ -6,19 +6,23 @@ curl -sf http://localhost:8080/health > /dev/null || exit 1
 
 PLAYLIST=/tmp/hls/stream.m3u8
 
-if [ ! -f /tmp/chromium.pid ] || ! kill -0 "$(cat /tmp/chromium.pid)" 2>/dev/null; then
-  exit 1
-fi
-
 if is_on_demand_enabled; then
   if [ ! -f /tmp/ffmpeg-manager.pid ] || ! kill -0 "$(cat /tmp/ffmpeg-manager.pid)" 2>/dev/null; then
     exit 1
   fi
 
-  if has_recent_hls_activity && ! is_ffmpeg_running; then
-    exit 1
+  if has_recent_hls_activity; then
+    if ! is_chromium_running && ! is_browser_starting; then
+      exit 1
+    fi
+    if ! is_ffmpeg_running && ! is_browser_starting; then
+      exit 1
+    fi
   fi
 else
+  if ! is_chromium_running; then
+    exit 1
+  fi
   if ! is_ffmpeg_running; then
     exit 1
   fi

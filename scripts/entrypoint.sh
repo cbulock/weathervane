@@ -87,7 +87,7 @@ bash /app/scripts/start-pulseaudio.sh
 # Step 4: Start nginx for HLS serving
 prepare_hls_dir
 echo "HLS backing path: $(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)"
-rm -f /tmp/hls/viewer-activity.log /tmp/ffmpeg-started-at
+rm -f /tmp/hls/viewer-activity.log /tmp/ffmpeg-started-at /tmp/browser-started-at /tmp/chromium.pid /tmp/automation-watch.pid
 EPG_PATH="$(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)/epg.xml"
 if ! bash /app/scripts/generate-epg.sh "$EPG_PATH"; then
   echo "Failed to generate EPG file at ${EPG_PATH}" >&2
@@ -97,33 +97,27 @@ nginx -c /app/config/nginx.conf &
 echo $! > /tmp/nginx.pid
 echo "nginx started"
 
-# Step 5: Start Chromium
-bash /app/scripts/start-chromium.sh
-
-# Step 6: Optional VNC for debugging
+# Step 5: Optional VNC for debugging
 if [ "${ENABLE_VNC}" = "true" ]; then
   echo "Starting VNC server on :5900..."
   x11vnc -display :99 -forever -nopw -shared -rfbport 5900 &
   echo $! > /tmp/x11vnc.pid
 fi
 
-# Step 7: Run browser automation (set location, start retrocast, unmute)
-echo "Running browser automation..."
-sleep 5
-cd /app/automation && node setup-weather.js
-echo "Automation complete"
-
-# Step 8: Keep watching for the Start RetroCast button in the background
-echo "Starting automation watcher..."
-cd /app/automation && node setup-weather.js --watch &
-echo $! > /tmp/automation-watch.pid
-
-# Step 9: Start FFmpeg capture or on-demand manager
+# Step 6: Start the on-demand stream manager, or the always-on browser and encoder.
 if [ "${FFMPEG_ON_DEMAND:-false}" = "true" ]; then
   bash /app/scripts/manage-ffmpeg.sh &
   MANAGER_PID=$!
   echo $MANAGER_PID > /tmp/ffmpeg-manager.pid
 else
+  bash /app/scripts/start-chromium.sh
+  echo "Running browser automation..."
+  sleep 5
+  (cd /app/automation && node setup-weather.js)
+  echo "Automation complete"
+  echo "Starting automation watcher..."
+  (cd /app/automation && node setup-weather.js --watch) &
+  echo $! > /tmp/automation-watch.pid
   bash /app/scripts/start-ffmpeg.sh &
   FFMPEG_PID=$!
   echo $FFMPEG_PID > /tmp/ffmpeg.pid

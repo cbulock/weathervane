@@ -75,10 +75,11 @@ Key environment variables:
 | `HLS_LIST_SIZE` | `5` | Number of playlist entries kept live |
 | `HLS_PORT` | `8080` | Host port for nginx/HLS |
 | `HLS_ROOT` | `/dev/shm/hls` | Preferred in-memory backing directory for HLS artifacts when `/tmp/hls` is not already mounted as tmpfs |
-| `FFMPEG_ON_DEMAND` | `true` | Start FFmpeg only after recent HLS requests instead of running continuously |
+| `FFMPEG_ON_DEMAND` | `true` | Start Chromium and FFmpeg only after recent HLS requests instead of running continuously |
 | `FFMPEG_IDLE_TIMEOUT` | `60` | Seconds of no HLS activity before FFmpeg stops in on-demand mode |
 | `FFMPEG_MANAGER_POLL_INTERVAL` | `2` | Seconds between on-demand manager checks for recent HLS activity |
 | `FFMPEG_STARTUP_GRACE` | `20` | Health-check grace window after FFmpeg starts in on-demand mode |
+| `BROWSER_STARTUP_GRACE` | `120` | Health-check grace window while Chromium and browser automation start in on-demand mode |
 | `FRAMING_DEBUG` | `false` | Write X11 and Puppeteer framing artifacts for calibration |
 | `FRAMING_DEBUG_DIR` | `/tmp/hls/debug` | Directory for framing screenshots and metrics |
 | `EPG_CHANNEL_ID` | `weathervane.retro` | XMLTV channel id used in `/epg.xml` |
@@ -95,7 +96,7 @@ Key environment variables:
 - `scripts/entrypoint.sh` - orchestrates Xvfb, PulseAudio, Chromium, automation, nginx, and FFmpeg
 - `scripts/gpu-common.sh` - shared Intel VAAPI runtime checks for Chromium and FFmpeg
 - `scripts/on-demand-common.sh` - shared helpers for HLS activity tracking and FFmpeg on-demand state
-- `scripts/manage-ffmpeg.sh` - on-demand FFmpeg supervisor for recent HLS traffic
+- `scripts/manage-ffmpeg.sh` - on-demand Chromium and FFmpeg supervisor for recent HLS traffic
 - `scripts/start-ffmpeg.sh` - capture and HLS generation
 - `scripts/start-chromium.sh` - browser startup flags
 - `automation/setup-weather.js` - location/start/audio automation, including the Start RetroCast watcher
@@ -119,22 +120,23 @@ This first pass keeps the current Xvfb display path. That means:
 - **Chromium compositing stays software-based** under Xvfb, so this is not full GPU rendering for the browser UI.
 - Some Intel VAAPI drivers only support **CQP** rate control for H.264. WeatherVane therefore uses `VAAPI_QP` and `VAAPI_QUALITY` for the hardware encode path instead of forcing bitrate-based RC modes.
 
-## Optional on-demand FFmpeg mode
+## Optional on-demand stream mode
 
-WeatherVane can also run FFmpeg **only while the HLS stream has recent viewer traffic**.
+WeatherVane can run Chromium and FFmpeg **only while the HLS stream has recent viewer traffic**.
 
 When `FFMPEG_ON_DEMAND=true`:
 
 1. nginx records `/hls/` requests into a local activity log.
-2. A small manager loop starts FFmpeg when recent HLS requests appear.
-3. FFmpeg stops after `FFMPEG_IDLE_TIMEOUT` seconds with no recent HLS activity.
+2. A small manager loop starts Chromium, sets up RetroCast, then starts FFmpeg when recent HLS requests appear.
+3. FFmpeg and Chromium stop after `FFMPEG_IDLE_TIMEOUT` seconds with no recent HLS activity.
 
 This reduces idle CPU usage, but it changes behavior:
 
-- The first viewer after an idle period may see a short cold-start delay while FFmpeg creates a fresh playlist and segments.
-- `/health` stays green while the container is intentionally idle, as long as Chromium and the FFmpeg manager are healthy.
+- The first viewer after an idle period may see a longer cold-start delay while Chromium loads RetroCast and FFmpeg creates a fresh playlist and segments. Players need to retry the playlist request if it initially returns 404.
+- `/health` stays green while the container is intentionally idle, as long as the stream manager is healthy.
 - “Active connection” means **recent HLS requests**, not a single long-lived client socket.
 - The manager keys off real timestamped request entries, not just the existence of the activity log file.
+- Set `FFMPEG_ON_DEMAND=false` to keep Chromium and FFmpeg running continuously for immediate playback.
 
 ## In-memory HLS storage
 
@@ -157,8 +159,8 @@ This keeps the nginx and script paths stable while moving the playlist and trans
 - **FFmpeg VAAPI fails on older Intel graphics**: try `LIBVA_DRIVER_NAME=i965` instead of `iHD`.
 - **FFmpeg VAAPI rejects bitrate/rate-control settings**: the current hardware path uses CQP by default. Tune `VAAPI_QP` and `VAAPI_QUALITY` rather than expecting `VIDEO_BITRATE` to control the Intel VAAPI encoder on every driver.
 - **Browser GPU mode does not reduce all Chromium CPU usage**: expected. With Xvfb, Chromium can use VAAPI/media acceleration but not full GPU compositing.
-- **On-demand mode does not start instantly**: expected. The first HLS request only signals activity; FFmpeg still needs a moment to start and create a fresh playlist.
-- **On-demand mode never starts FFmpeg**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.
+- **On-demand mode does not start instantly**: expected. The first HLS request signals activity; Chromium and browser automation must finish before FFmpeg creates a fresh playlist.
+- **On-demand mode never starts**: confirm the client is requesting `/hls/stream.m3u8` or segment files through nginx and that `/tmp/hls/viewer-activity.log` is being updated.
 - **Logs still mention `/tmp/hls`**: the public in-container path stays `/tmp/hls`, but startup logs and FFmpeg output now show the resolved backing path (for example `/dev/shm/hls`) when memory-backed storage is active.
 - **Need the in-memory files somewhere else**: override `HLS_ROOT` and restart the container. WeatherVane still serves the stream from `/hls/...`; `HLS_ROOT` only changes the backing path inside the container.
 - **Chromium instability**: increase `shm_size` in `docker-compose.yml`.

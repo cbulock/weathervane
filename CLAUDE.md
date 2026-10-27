@@ -16,7 +16,7 @@ FFmpeg (x11grab + pulse) → HLS segments (.ts) → nginx (:8080) → /hls/strea
 
 - `Dockerfile` - Debian bookworm-slim with Xvfb, PulseAudio, native Chromium, FFmpeg, nginx, Node.js
 - `docker-compose.yml` - Compose config with env vars, shm_size, tmpfs
-- `scripts/entrypoint.sh` - Orchestrates startup: Xvfb → PulseAudio → nginx → Chromium → Puppeteer → FFmpeg
+- `scripts/entrypoint.sh` - Orchestrates startup: Xvfb → PulseAudio → nginx → on-demand manager (or Chromium → Puppeteer → FFmpeg in always-on mode)
 - `scripts/start-ffmpeg.sh` - FFmpeg x11grab + pulse → HLS encoding pipeline
 - `scripts/start-chromium.sh` - Chromium in kiosk mode with autoplay and CDP enabled
 - `automation/setup-weather.js` - Puppeteer script that sets location, clicks START, unmutes audio
@@ -43,7 +43,7 @@ The CSS selectors in `automation/setup-weather.js` are best-effort guesses. The 
 ### Common Issues
 - **No audio**: Check PulseAudio virtual sink exists (`pactl list sources` should show `virtual_speaker.monitor`)
 - **Black screen**: Verify DISPLAY=:99 and Xvfb is running
-- **High CPU**: Reduce FRAMERATE to 24, use FFMPEG_PRESET=ultrafast
+- **High CPU**: On-demand mode stops Chromium and FFmpeg while idle. For active viewers, try a lower resolution or FRAMERATE; FFMPEG_PRESET already defaults to ultrafast.
 - **Chromium crash**: Increase shm_size in docker-compose.yml
 - **Audio/video drift**: Add `-async 1` or `-itsoffset -1.25` to FFmpeg audio input
 

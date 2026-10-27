@@ -31,7 +31,7 @@ The container starts a virtual X display with Xvfb on `:99`, launches PulseAudio
 
 FFmpeg captures the X11 display and PulseAudio monitor source, crops the browser output using `CAPTURE_*` variables, scales it to `SCREEN_WIDTH` x `SCREEN_HEIGHT`, and writes rolling HLS segments plus `stream.m3u8` into `/tmp/hls`. nginx serves `/tmp/hls` at `/hls/`, exposes `/epg.xml` from the generated XMLTV file, and redirects `/` to `/hls/stream.m3u8`.
 
-The startup order in `scripts/entrypoint.sh` matters: Xvfb -> PulseAudio -> EPG generation -> nginx -> Chromium -> initial browser automation -> background watcher -> FFmpeg. Cleanup also depends on pidfiles written under `/tmp`.
+The startup order in `scripts/entrypoint.sh` matters: Xvfb -> PulseAudio -> EPG generation -> nginx -> on-demand manager. The manager starts Chromium -> initial browser automation -> background watcher -> FFmpeg when HLS traffic arrives, and stops them after the idle timeout. Always-on mode starts those components during entrypoint startup. Cleanup also depends on pidfiles written under `/tmp`.
 
 ## Key conventions
 

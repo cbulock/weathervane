@@ -6,6 +6,8 @@ FFMPEG_IDLE_TIMEOUT=${FFMPEG_IDLE_TIMEOUT:-60}
 FFMPEG_MANAGER_POLL_INTERVAL=${FFMPEG_MANAGER_POLL_INTERVAL:-2}
 FFMPEG_STARTUP_GRACE=${FFMPEG_STARTUP_GRACE:-20}
 FFMPEG_START_TS_FILE=${FFMPEG_START_TS_FILE:-/tmp/ffmpeg-started-at}
+BROWSER_START_TS_FILE=${BROWSER_START_TS_FILE:-/tmp/browser-started-at}
+BROWSER_STARTUP_GRACE=${BROWSER_STARTUP_GRACE:-120}
 HLS_FILES_DIR=${HLS_FILES_DIR:-$(readlink -f /tmp/hls 2>/dev/null || echo /tmp/hls)}
 
 is_on_demand_enabled() {
@@ -22,6 +24,15 @@ is_ffmpeg_running() {
   local pid
   pid=$(ffmpeg_pid)
   [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null
+}
+
+is_chromium_running() {
+  [ -f /tmp/chromium.pid ] && kill -0 "$(cat /tmp/chromium.pid)" 2>/dev/null
+}
+
+is_browser_starting() {
+  [ -f "${BROWSER_START_TS_FILE}" ] &&
+    [ $(( $(date +%s) - $(cat "${BROWSER_START_TS_FILE}") )) -lt "${BROWSER_STARTUP_GRACE}" ]
 }
 
 record_ffmpeg_start() {

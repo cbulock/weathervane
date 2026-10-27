@@ -111,40 +111,42 @@ async function normalizeViewport(page) {
   });
 
   const session = await page.target().createCDPSession();
-  await session.send('Emulation.setDeviceMetricsOverride', {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    deviceScaleFactor: 1,
-    mobile: false,
-    screenWidth: SCREEN_WIDTH,
-    screenHeight: SCREEN_HEIGHT,
-  });
-
   try {
-    const { windowId } = await session.send('Browser.getWindowForTarget');
-    await session.send('Browser.setWindowBounds', {
-      windowId,
-      bounds: {
-        left: 0,
-        top: 0,
-        width: SCREEN_WIDTH,
-        height: SCREEN_HEIGHT,
-      },
+    await session.send('Emulation.setDeviceMetricsOverride', {
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: SCREEN_WIDTH,
+      screenHeight: SCREEN_HEIGHT,
     });
-  } catch (error) {
-    console.log(`Window bounds adjustment skipped: ${error.message}`);
+
+    try {
+      const { windowId } = await session.send('Browser.getWindowForTarget');
+      await session.send('Browser.setWindowBounds', {
+        windowId,
+        bounds: {
+          left: 0,
+          top: 0,
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT,
+        },
+      });
+    } catch (error) {
+      console.log(`Window bounds adjustment skipped: ${error.message}`);
+    }
+  } finally {
+    await session.detach();
   }
 }
 
 async function hideCursor(page) {
-  await page.addStyleTag({
-    content: `
-      *,
-      *::before,
-      *::after {
-        cursor: none !important;
-      }
-    `,
+  await page.evaluate(() => {
+    if (document.getElementById('weathervane-hide-cursor')) return;
+    const style = document.createElement('style');
+    style.id = 'weathervane-hide-cursor';
+    style.textContent = '*, *::before, *::after { cursor: none !important; }';
+    document.head.appendChild(style);
   });
 }
 
@@ -460,9 +462,15 @@ async function main() {
     console.log(`Watching for Start RetroCast button every ${WATCH_INTERVAL_MS}ms`);
     while (true) {
       try {
-        await normalizeViewport(page);
-        await applySafeFraming(page);
-        await hideCursor(page);
+        const framingReady = await page.evaluate(() => {
+          const root = document.querySelector('#__nuxt') || document.body.firstElementChild || document.body;
+          return Boolean(root && root.dataset.weathervaneScale);
+        });
+        if (!framingReady) {
+          await normalizeViewport(page);
+          await applySafeFraming(page);
+          await hideCursor(page);
+        }
         await dismissOverlays(page);
         const clicked = await clickStartIfPresent(page);
         if (clicked) {
