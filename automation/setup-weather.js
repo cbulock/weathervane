@@ -477,6 +477,9 @@ async function main() {
           await unmuteAudio(page);
         }
       } catch (error) {
+        if (page.isClosed()) {
+          throw new Error(`RetroCast page closed: ${error.message}`);
+        }
         console.error(`Watcher iteration failed: ${error.message}`);
       }
 

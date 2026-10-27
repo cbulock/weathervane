@@ -77,3 +77,33 @@ test('always-on mode starts Chromium and FFmpeg without a viewer', { timeout: 90
     try { docker('rm', '-f', alwaysName); } catch (_) { /* Already stopped. */ }
   }
 });
+
+test('on-demand mode recovers when the captured Chromium page closes', { timeout: 180000 }, async () => {
+  const recoveryName = `${name}-recovery`;
+  try {
+    docker('run', '-d', '--rm', '--name', recoveryName, '--shm-size', '2g',
+      '--tmpfs', '/tmp/hls:size=100m', '-e', 'FFMPEG_ON_DEMAND=true',
+      '-e', 'FFMPEG_IDLE_TIMEOUT=60', '-e', 'FFMPEG_MANAGER_POLL_INTERVAL=1', image);
+
+    await waitFor(() => {
+      docker('exec', recoveryName, 'sh', '-lc', 'curl -s -o /dev/null http://localhost:8080/hls/stream.m3u8');
+      return docker('exec', recoveryName, 'sh', '-lc',
+        'test -s /tmp/hls/stream.m3u8 && test -f /tmp/automation-watch.pid && echo live') === 'live';
+    }, 100000, 'initial stream and watcher');
+
+    const originalBrowserPid = docker('exec', recoveryName, 'cat', '/tmp/chromium.pid');
+    const closePage = 'const p = require("puppeteer-core"); p.connect({browserURL:"http://127.0.0.1:9222"}).then(async b => { const page = (await b.pages())[0]; await b.newPage(); await page.close(); b.disconnect(); });';
+    docker('exec', '-w', '/app/automation', recoveryName, 'node', '-e', closePage);
+    assert.equal(docker('exec', recoveryName, 'cat', '/tmp/chromium.pid'), originalBrowserPid,
+      'the browser process should survive closing only the captured page');
+
+    await waitFor(() => {
+      docker('exec', recoveryName, 'sh', '-lc', 'curl -s -o /dev/null http://localhost:8080/hls/stream.m3u8');
+      const state = docker('exec', recoveryName, 'sh', '-lc',
+        'cat /tmp/chromium.pid 2>/dev/null; test -s /tmp/hls/stream.m3u8 && echo live');
+      return state.includes('live') && state.split('\n')[0] !== originalBrowserPid;
+    }, 70000, 'replacement browser and stream');
+  } finally {
+    try { docker('rm', '-f', recoveryName); } catch (_) { /* Already stopped. */ }
+  }
+});

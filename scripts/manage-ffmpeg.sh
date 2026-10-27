@@ -47,10 +47,6 @@ stop_browser() {
 }
 
 start_browser() {
-  if is_chromium_running; then
-    return
-  fi
-
   stop_browser
   date +%s > "${BROWSER_START_TS_FILE}"
   echo "Recent HLS activity detected; starting Chromium..."
@@ -98,7 +94,7 @@ echo "Starting stream on-demand manager (idle timeout: ${FFMPEG_IDLE_TIMEOUT}s, 
 
 while true; do
   if has_recent_hls_activity; then
-    if ! is_chromium_running; then
+    if ! is_chromium_running || [ ! -f /tmp/automation-watch.pid ] || ! kill -0 "$(cat /tmp/automation-watch.pid)" 2>/dev/null; then
       stop_ffmpeg
       start_browser
     fi
