@@ -2,6 +2,6 @@
   "name": "weathervane-automation",
   "private": true,
   "dependencies": {
-    "puppeteer-core": "^22.15.0"
+    "puppeteer-core": "^25.16.0"
   }
 }
